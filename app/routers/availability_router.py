@@ -50,13 +50,10 @@ def update_slot(slot_id: int, payload: AvailabilitySlotUpdate, db: Session = Dep
 @router.delete("/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_slot(slot_id: int, db: Session = Depends(get_db)):
     svc.delete_availability_slot(db, slot_id)
-
-
-# ✅🔥 NEW: GET AVAILABLE SLOTS
-@router.get("/slots/")
+@router.get("/slots/{slug}")
 def get_available_slots(
+    slug: str,
     date: str = Query(...),
-    event_type_id: int = Query(...),
     db: Session = Depends(get_db),
 ):
-    return svc.get_available_slots(db, date, event_type_id)
+    return svc.get_available_slots_by_slug(db, slug, date)

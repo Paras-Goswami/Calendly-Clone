@@ -7,7 +7,8 @@ from app.schemas.availability import AvailabilitySlotCreate, AvailabilitySlotUpd
 from app.services.event_type_service import get_default_user
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.logging import get_logger
-
+from app.models.booking import Booking
+from app.models.event_type import EventType
 logger = get_logger(__name__)
 
 VALID_TIMEZONES = set(pytz.all_timezones)
@@ -107,31 +108,68 @@ def bulk_set_availability(db: Session, payload: AvailabilityBulkSet) -> list[Ava
 # =========================
 # ✅🔥 NEW FUNCTION (FIX)
 # =========================
-def get_available_slots(db: Session, date: str, event_type_id: int):
-    """
-    Returns available time slots for a given date.
-    Currently simplified (demo version).
-    """
 
-    print("📅 DATE:", date)
-    print("🆔 EVENT TYPE:", event_type_id)
+
+from app.models.booking import Booking
+from app.models.event_type import EventType
+from app.services.event_type_service import get_event_type_by_slug
+
+
+def get_available_slots_by_slug(db: Session, slug: str, date: str):
+    """
+    Returns slots using slug (frontend-friendly)
+    """
 
     try:
-        selected_date = datetime.strptime(date, "%Y-%m-%d")
+        selected_date = datetime.strptime(date, "%Y-%m-%d").date()
     except Exception:
         raise ValidationError("Invalid date format. Use YYYY-MM-DD")
 
-    # Example: working hours 10 AM - 5 PM
-    start_time = datetime.strptime("10:00", "%H:%M")
-    end_time = datetime.strptime("17:00", "%H:%M")
+    # ✅ Get event type using slug
+    event_type = get_event_type_by_slug(db, slug)
 
+    if not event_type:
+        raise NotFoundError("EventType", slug)
+
+    duration = event_type.duration_minutes
+
+    # ✅ Get user availability
+    user = get_default_user(db)
+    weekday = selected_date.weekday()
+
+    availability = db.query(Availability).filter(
+        Availability.user_id == user.id,
+        Availability.day_of_week == weekday
+    ).first()
+
+    if not availability:
+        return []
+
+    # ✅ Create datetime range
+    start_time = datetime.combine(selected_date, availability.start_time)
+    end_time = datetime.combine(selected_date, availability.end_time)
+
+    # ✅ Generate slots
     slots = []
     current = start_time
 
-    while current < end_time:
+    while current + timedelta(minutes=duration) <= end_time:
         slots.append(current.strftime("%H:%M"))
-        current += timedelta(minutes=30)
+        current += timedelta(minutes=duration)
 
-    return {
-        "slots": slots
-    }
+    # ✅ Remove booked slots
+    bookings = db.query(Booking).filter(
+        Booking.event_type_id == event_type.id,
+        Booking.start_time >= start_time,
+        Booking.end_time <= end_time
+    ).all()
+
+    booked_times = [
+        b.start_time.strftime("%H:%M") for b in bookings
+    ]
+
+    available_slots = [
+        s for s in slots if s not in booked_times
+    ]
+
+    return available_slots

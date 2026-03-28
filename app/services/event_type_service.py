@@ -10,7 +10,15 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+from fastapi import HTTPException
 
+def get_event_type_by_slug(db: Session, slug: str):
+    event = db.query(EventType).filter(EventType.slug == slug).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return event
 def _generate_unique_slug(db: Session, base_slug: str, exclude_id: int | None = None) -> str:
     """Appends a numeric suffix to make a slug unique if needed."""
     slug = base_slug

@@ -36,6 +36,16 @@ def list_event_types(
     items, total = svc.list_event_types(db, skip=pagination["skip"], limit=pagination["limit"])
     return paginate_response(items, total, pagination["page"], pagination["page_size"])
 
+@router.get(
+    "/slug/{slug}",
+    response_model=EventTypeResponse,
+    summary="Get event type by slug",
+)
+def get_event_type_by_slug(
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    return svc.get_event_type_by_slug(db, slug)
 
 @router.get(
     "/{event_type_id}",

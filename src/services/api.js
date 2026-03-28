@@ -2,48 +2,45 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../constants';
 
-// ✅ Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL || "http://127.0.0.1:8000",
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // ⏱ prevents hanging requests
+  timeout: 15000,
 });
 
-// ✅ REQUEST INTERCEPTOR (for future auth)
+// INTERCEPTORS
 apiClient.interceptors.request.use(
-  (config) => {
-    // Example if you add auth later:
-    // const token = localStorage.getItem("token");
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
-
-    return config;
-  },
+  (config) => config,
   (error) => Promise.reject(error)
 );
 
-// ✅ RESPONSE INTERCEPTOR (VERY IMPORTANT)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error("❌ API ERROR:", error.response?.data || error.message);
-
-    // 🔥 Show validation errors clearly (FastAPI)
-    if (error.response?.data?.detail) {
-      console.table(error.response.data.detail);
-    }
-
     return Promise.reject(error);
   }
 );
+// ================= MEETINGS =================
+export const meetingsApi = {
+  getUpcoming: () =>
+    apiClient.get('/meetings/upcoming/'),
 
+  getPast: () =>
+    apiClient.get('/meetings/past/'),
+
+  cancelMeeting: (meetingId) =>
+    apiClient.post(`/meetings/${meetingId}/cancel/`),
+};
 // ================= EVENT TYPES =================
 export const eventTypesApi = {
   getAll: () => apiClient.get('/event-types/'),
 
+  // ✅ CORRECT
   getBySlug: (slug) =>
-    apiClient.get(`/event-types/${slug}/`),
+    apiClient.get(`/event-types/slug/${slug}`),
 
   create: (data) =>
     apiClient.post('/event-types/', data),
@@ -63,34 +60,20 @@ export const availabilityApi = {
   updateRules: (data) =>
     apiClient.put('/availability/bulk/', data),
 
-  getAvailableSlots: (date, eventTypeId) => 
-  apiClient.get('/availability/slots/', { 
-    params: { 
-      date,
-      event_type_id: eventTypeId  // ✅ FIXED
-    } 
-  }),
+  // ✅ IMPORTANT FIX: use SLUG (not ID)
+  getAvailableSlots: (slug, date) =>
+    apiClient.get(`/availability/slots/${slug}`, {
+      params: { date },
+    }),
 };
 
 // ================= BOOKINGS =================
 export const bookingApi = {
-  createBooking: (data) =>
-    apiClient.post('/booking/', data),
+  createBooking: (slug, data) =>
+    apiClient.post(`/booking/${slug}/`, data),
 
   getConfirmation: (bookingId) =>
     apiClient.get(`/booking/${bookingId}/confirm/`),
-};
-
-// ================= MEETINGS =================
-export const meetingsApi = {
-  getUpcoming: () =>
-    apiClient.get('/meetings/upcoming/'),
-
-  getPast: () =>
-    apiClient.get('/meetings/past/'),
-
-  cancelMeeting: (meetingId) =>
-    apiClient.post(`/meetings/${meetingId}/cancel/`),
 };
 
 export default apiClient;
