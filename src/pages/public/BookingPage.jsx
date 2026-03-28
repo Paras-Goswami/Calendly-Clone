@@ -17,7 +17,7 @@ const BookingPage = () => {
   const [loadingType, setLoadingType] = useState(true);
   const [error, setError] = useState(null);
 
-  // Booking flow state
+  // Booking flow
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -27,7 +27,7 @@ const BookingPage = () => {
 
   const [monthAvailableDates, setMonthAvailableDates] = useState([]);
 
-  // ✅ Fetch event by slug
+  // ================= FETCH EVENT =================
   useEffect(() => {
     const fetchEventType = async () => {
       try {
@@ -41,6 +41,7 @@ const BookingPage = () => {
         for (let i = 1; i <= 30; i++) {
           const d = new Date();
           d.setDate(d.getDate() + i);
+
           if (d.getDay() !== 0 && d.getDay() !== 6) {
             dates.push(toDateString(d));
           }
@@ -58,7 +59,7 @@ const BookingPage = () => {
     fetchEventType();
   }, [slug]);
 
-  // ✅ Handle date select
+  // ================= DATE SELECT =================
   const handleDateSelect = async (date) => {
     setSelectedDate(date);
     setStep(2);
@@ -66,10 +67,21 @@ const BookingPage = () => {
     setSelectedSlot(null);
 
     try {
+      const formattedDate = new Date(date)
+        .toISOString()
+        .split("T")[0];
+
+      console.log("📤 SLOT REQUEST:", {
+        date: formattedDate,
+        event_type_id: eventType.id
+      });
+
       const response = await availabilityApi.getAvailableSlots(
-        toDateString(date),
+        formattedDate,
         eventType.id
       );
+
+      console.log("✅ SLOTS:", response.data);
 
       setAvailableSlots(response.data.slots || []);
 
@@ -81,26 +93,39 @@ const BookingPage = () => {
     }
   };
 
-  // ✅ Handle slot selection
+  // ================= SLOT SELECT =================
   const handleSlotSelect = (time, confirm = false) => {
     setSelectedSlot(time);
     if (confirm) setStep(3);
   };
 
-  // ✅ Submit booking
+  // ================= BOOKING SUBMIT =================
   const handleBookingSubmit = async (formData) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // ✅ DATE FIX
+      const formattedDate = new Date(selectedDate)
+        .toISOString()
+        .split("T")[0];
+
+      // ✅ TIME FIX (CRITICAL)
+      const formattedTime =
+        selectedSlot.length === 5
+          ? `${selectedSlot}:00`
+          : selectedSlot;
+
       const payload = {
         event_type_id: eventType.id,
-        date: toDateString(selectedDate),
-        start_time: selectedSlot,
-        invitee_name: formData.name,
-        invitee_email: formData.email,
-        notes: formData.notes
+        date: formattedDate,
+        start_time: formattedTime,
+        invitee_name: formData.name.trim(),
+        invitee_email: formData.email.trim(),
+        notes: formData.notes || ""
       };
+
+      console.log("📤 BOOKING PAYLOAD:", payload);
 
       const response = await bookingApi.createBooking(payload);
 
@@ -148,7 +173,6 @@ const BookingPage = () => {
             Paras Goswami
           </div>
 
-          {/* ✅ FIXED */}
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
             {eventType.name}
           </h1>
@@ -183,6 +207,7 @@ const BookingPage = () => {
               <h2 className="text-xl font-bold mb-6 text-center">
                 Select a Date
               </h2>
+
               <Calendar
                 availableDates={monthAvailableDates}
                 selectedDate={selectedDate}

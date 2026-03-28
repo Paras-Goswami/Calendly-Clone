@@ -63,10 +63,13 @@ export const availabilityApi = {
   updateRules: (data) =>
     apiClient.put('/availability/bulk/', data),
 
-  getAvailableSlots: (date, eventTypeId) =>
-    apiClient.get('/availability/slots/', {
-      params: { date, eventTypeId },
-    }),
+  getAvailableSlots: (date, eventTypeId) => 
+  apiClient.get('/availability/slots/', { 
+    params: { 
+      date,
+      event_type_id: eventTypeId  // ✅ FIXED
+    } 
+  }),
 };
 
 // ================= BOOKINGS =================

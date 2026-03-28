@@ -1,4 +1,5 @@
 import pytz
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.availability import Availability
@@ -76,16 +77,11 @@ def delete_availability_slot(db: Session, slot_id: int) -> None:
 
 
 def bulk_set_availability(db: Session, payload: AvailabilityBulkSet) -> list[Availability]:
-    """
-    Replace ALL availability for the default user in one atomic transaction.
-    Useful for 'save my weekly schedule' UI flows.
-    """
     user = get_default_user(db)
 
     for slot in payload.slots:
         _validate_timezone(slot.timezone)
 
-    # Delete existing
     db.query(Availability).filter(Availability.user_id == user.id).delete()
 
     new_slots = [
@@ -100,8 +96,42 @@ def bulk_set_availability(db: Session, payload: AvailabilityBulkSet) -> list[Ava
     ]
     db.add_all(new_slots)
     db.commit()
+
     for slot in new_slots:
         db.refresh(slot)
 
     logger.info("Bulk set %d availability slots for user_id=%d", len(new_slots), user.id)
     return new_slots
+
+
+# =========================
+# ✅🔥 NEW FUNCTION (FIX)
+# =========================
+def get_available_slots(db: Session, date: str, event_type_id: int):
+    """
+    Returns available time slots for a given date.
+    Currently simplified (demo version).
+    """
+
+    print("📅 DATE:", date)
+    print("🆔 EVENT TYPE:", event_type_id)
+
+    try:
+        selected_date = datetime.strptime(date, "%Y-%m-%d")
+    except Exception:
+        raise ValidationError("Invalid date format. Use YYYY-MM-DD")
+
+    # Example: working hours 10 AM - 5 PM
+    start_time = datetime.strptime("10:00", "%H:%M")
+    end_time = datetime.strptime("17:00", "%H:%M")
+
+    slots = []
+    current = start_time
+
+    while current < end_time:
+        slots.append(current.strftime("%H:%M"))
+        current += timedelta(minutes=30)
+
+    return {
+        "slots": slots
+    }
