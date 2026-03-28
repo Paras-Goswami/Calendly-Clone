@@ -9,7 +9,15 @@ import EmptyState from '../../components/ui/EmptyState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const EventTypesPage = () => {
-  const { eventTypes, loading, error, fetchEventTypes, createEventType, deleteEventType } = useEventTypes();
+  const {
+    eventTypes,
+    loading,
+    error,
+    fetchEventTypes,
+    createEventType,
+    updateEventType,   // ✅ ADDED
+    deleteEventType
+  } = useEventTypes();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -32,25 +40,25 @@ const EventTypesPage = () => {
     setEditingEvent(null);
   };
 
-  // ✅ FINAL CLEAN SAVE (ALIGNED WITH BACKEND)
+  // ✅ FINAL SAVE (CREATE + EDIT)
   const handleSave = async (data) => {
     try {
-      // 🔥 Validation
       if (!data.title || !data.duration) {
         alert("Title and Duration are required");
         return;
       }
 
-      // ✅ ONLY send what backend needs
       const cleanedData = {
-        title: data.title.trim(),          // will be mapped to name in hook
-        duration: Number(data.duration),   // will be mapped to duration_minutes
+        title: data.title.trim(),
+        duration: Number(data.duration),
         description: data.description?.trim() || "",
       };
 
       if (editingEvent) {
-        console.log('Update logic to be implemented', cleanedData);
+        // ✅ EDIT FLOW
+        await updateEventType(editingEvent.id, cleanedData);
       } else {
+        // ✅ CREATE FLOW
         await createEventType(cleanedData);
       }
 
@@ -93,6 +101,7 @@ const EventTypesPage = () => {
             Create and manage your booking pages.
           </p>
         </div>
+
         <Button onClick={() => handleOpenModal()}>
           + New Event Type
         </Button>
@@ -117,7 +126,7 @@ const EventTypesPage = () => {
             <EventTypeCard
               key={eventType.id}
               eventType={eventType}
-              onEdit={handleOpenModal}
+              onEdit={handleOpenModal}   // ✅ already correct
               onDelete={confirmDelete}
             />
           ))}
@@ -137,7 +146,7 @@ const EventTypesPage = () => {
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={executeDelete}
         title="Delete Event Type"
-        message={`Are you sure you want to delete "${eventToDelete?.title}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${eventToDelete?.title || eventToDelete?.name}"?`}
         confirmText="Yes, Delete"
         isLoading={isDeleting}
       />

@@ -10,31 +10,34 @@ export const useEventTypes = () => {
 
   // ✅ FETCH
   const fetchEventTypes = useCallback(async () => {
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  try {
-    const response = await eventTypesApi.getAll();
+    try {
+      const response = await eventTypesApi.getAll();
 
-    // ✅ FIX: Ensure it's always an array
-    const data = Array.isArray(response.data)
-      ? response.data
-      : response.data.items || [];
+      // ✅ Always ensure array
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.items || [];
 
-    console.log("✅ FETCHED DATA:", data);
+      console.log("✅ FETCHED DATA:", data);
 
-    setEventTypes(data);
+      setEventTypes(data);
+      return data;
 
-  } catch (err) {
-    console.log("❌ FETCH ERROR:", err.response?.data);
-    setError(getErrorMessage(err));
-    setEventTypes([]);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+    } catch (err) {
+      console.log("❌ FETCH ERROR:", err.response?.data);
+      setError(getErrorMessage(err));
+      setEventTypes([]);
+      throw err;
 
-  // ✅ CREATE (YOUR FIXED FUNCTION)
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ CREATE
   const createEventType = async (data) => {
     setLoading(true);
     setError(null);
@@ -47,16 +50,56 @@ export const useEventTypes = () => {
         is_active: true,
       };
 
-      console.log("✅ FINAL PAYLOAD:", payload);
+      console.log("✅ CREATE PAYLOAD:", payload);
 
       const response = await eventTypesApi.create(payload);
 
+      // ✅ Add to UI instantly
       setEventTypes(prev => [...prev, response.data]);
 
       return response.data;
 
     } catch (err) {
-      console.log("❌ BACKEND ERROR:", err.response?.data);
+      console.log("❌ CREATE ERROR:", err.response?.data);
+
+      if (err.response?.data?.detail) {
+        console.table(err.response.data.detail);
+      }
+
+      setError(getErrorMessage(err));
+      throw err;
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ UPDATE (🔥 NEW FEATURE)
+  const updateEventType = async (id, data) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = {
+        name: data.title.trim(),
+        duration_minutes: Number(data.duration),
+        description: data.description || "",
+        is_active: true,
+      };
+
+      console.log("🟡 UPDATE PAYLOAD:", payload);
+
+      const response = await eventTypesApi.update(id, payload);
+
+      // ✅ Update UI instantly
+      setEventTypes(prev =>
+        prev.map(et => (et.id === id ? response.data : et))
+      );
+
+      return response.data;
+
+    } catch (err) {
+      console.log("❌ UPDATE ERROR:", err.response?.data);
 
       if (err.response?.data?.detail) {
         console.table(err.response.data.detail);
@@ -77,10 +120,15 @@ export const useEventTypes = () => {
 
     try {
       await eventTypesApi.delete(id);
+
+      // ✅ Remove from UI instantly
       setEventTypes(prev => prev.filter(et => et.id !== id));
+
     } catch (err) {
+      console.log("❌ DELETE ERROR:", err.response?.data);
       setError(getErrorMessage(err));
       throw err;
+
     } finally {
       setLoading(false);
     }
@@ -92,6 +140,7 @@ export const useEventTypes = () => {
     error,
     fetchEventTypes,
     createEventType,
+    updateEventType, // ✅ NEW
     deleteEventType
   };
 };
