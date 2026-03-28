@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import engine, SessionLocal, Base
 from app.db.seed import seed_default_user
-from app.models import *  # registers all models
+from app.models import * # registers all models
 
-# ✅ FIXED IMPORTS (IMPORTANT)
+# Routers
 from app.routers.event_types_router import router as event_types_router
 from app.routers.availability_router import router as availability_router
 from app.routers.booking_router import router as booking_router
@@ -55,10 +55,18 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS
+# ---------------------------------------------------------------------------
+# CORS Configuration (FIXED COMMAS AND PORTS)
+# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "http://localhost:5174", 
+        "http://127.0.0.1:5174",
+        "http://0.0.0.0:5174"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,13 +87,13 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 # ---------------------------------------------------------------------------
-# Routers
+# Routers (FIXED PREFIX TO MATCH REACT FRONTEND)
 # ---------------------------------------------------------------------------
 
-app.include_router(event_types_router, prefix="/api/v1")
-app.include_router(availability_router, prefix="/api/v1")
-app.include_router(booking_router, prefix="/api/v1")
-app.include_router(meetings_router, prefix="/api/v1")
+app.include_router(event_types_router)
+app.include_router(availability_router)
+app.include_router(booking_router)
+app.include_router(meetings_router)
 
 
 # ---------------------------------------------------------------------------
