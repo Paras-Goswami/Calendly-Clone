@@ -1,46 +1,96 @@
 // src/components/booking/BookingForm.jsx
-import React, { useState } from 'react';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
-import { formatDate, formatTime } from '../../utils/dateUtils';
 
-const BookingForm = ({ eventType, selectedDate, selectedSlot, onSubmit, onCancel, isLoading }) => {
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import Input from "../ui/Input";
+import Button from "../ui/Button";
+import { formatDate, formatTime } from "../../utils/dateUtils";
+
+const BookingForm = ({
+  eventType,
+  selectedDate,
+  selectedSlot,
+  onSubmit,
+  onCancel,
+  isLoading,
+}) => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    notes: ''
+    name: "",
+    email: "",
+    notes: "",
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    try {
+      // Call parent submit function
+      await onSubmit(formData);
+
+      // Success message
+      alert("Meeting scheduled successfully!");
+
+      // Redirect to meetings page
+      navigate("/meetings");
+    } catch (error) {
+      console.error("Booking failed:", error);
+      alert("Failed to schedule meeting");
+    }
   };
 
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter Details</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Enter Details
+        </h2>
+
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex flex-col gap-1 text-blue-800">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">{eventType.title}</span>
+            <span className="font-semibold">
+              {eventType.title}
+            </span>
+
             <span className="text-blue-400">•</span>
-            <span>{eventType.duration} mins</span>
+
+            <span>
+              {eventType.duration} mins
+            </span>
           </div>
+
           <div className="flex items-center gap-2 font-medium">
-            <span>📅 {formatDate(selectedDate, 'EEEE, MMMM d, yyyy')}</span>
+            <span>
+              📅 {formatDate(
+                selectedDate,
+                "EEEE, MMMM d, yyyy"
+              )}
+            </span>
           </div>
+
           <div className="flex items-center gap-2 font-medium">
-            <span>⏰ {formatTime(selectedSlot)}</span>
+            <span>
+              ⏰ {formatTime(selectedSlot)}
+            </span>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
         <Input
           label="Name *"
           name="name"
@@ -70,10 +120,21 @@ const BookingForm = ({ eventType, selectedDate, selectedSlot, onSubmit, onCancel
         />
 
         <div className="pt-4 flex gap-3">
-          <Button type="submit" variant="primary" className="flex-1" isLoading={isLoading}>
+          <Button
+            type="submit"
+            variant="primary"
+            className="flex-1"
+            isLoading={isLoading}
+          >
             Schedule Event
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
         </div>
