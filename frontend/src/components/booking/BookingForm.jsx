@@ -42,8 +42,9 @@ const BookingForm = ({
       // Success message
       alert("Meeting scheduled successfully!");
 
-      // Redirect to meetings page
-      navigate("/meetings");
+      // ✅ FIXED ROUTE
+      navigate("/dashboard/meetings");
+
     } catch (error) {
       console.error("Booking failed:", error);
       alert("Failed to schedule meeting");
