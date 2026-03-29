@@ -56,18 +56,17 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# CORS Configuration (FINAL)
+# CORS Configuration (PRODUCTION SAFE)
 # ---------------------------------------------------------------------------
-
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://calendly-clone.vercel.app",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        # Local development
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,11 +78,16 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled exception on %s %s", request.method, request.url)
+    logger.exception(
+        "Unhandled exception on %s %s",
+        request.method,
+        request.url
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "An unexpected error occurred."},
     )
+
 
 # ---------------------------------------------------------------------------
 # Routers
@@ -94,13 +98,17 @@ app.include_router(availability_router)
 app.include_router(booking_router)
 app.include_router(meetings_router)
 
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"status": "ok", "service": "schedulr-api"}
+    return {
+        "status": "ok",
+        "service": "schedulr-api"
+    }
 
 
 @app.get("/", include_in_schema=False)
