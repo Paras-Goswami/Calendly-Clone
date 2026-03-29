@@ -1,58 +1,86 @@
-// src/hooks/useMeetings.js
-import { useState, useCallback } from 'react';
-import { meetingsApi } from '../services/api';
-import { getErrorMessage } from '../utils/helpers';
+import { useState, useCallback } from "react";
+import axios from "axios";
+
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const useMeetings = () => {
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // -----------------------------
+  // FETCH UPCOMING
+  // -----------------------------
   const fetchUpcoming = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response = await meetingsApi.getUpcoming();
-      // ✅ FIX: Handle paginated data
-      const data = Array.isArray(response.data) ? response.data : (response.data.items || []);
-      setMeetings(data);
+      const response = await axios.get(
+        `${API_URL}/meetings/upcoming?page=1&page_size=20`
+      );
+
+      console.log("Upcoming meetings:", response.data);
+
+      // CRITICAL FIX
+      setMeetings(response.data.items || []);
+
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error("Error fetching upcoming meetings:", err);
+      setError(err);
       setMeetings([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // -----------------------------
+  // FETCH PAST
+  // -----------------------------
   const fetchPast = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response = await meetingsApi.getPast();
-      // ✅ FIX: Handle paginated data
-      const data = Array.isArray(response.data) ? response.data : (response.data.items || []);
-      setMeetings(data);
+      const response = await axios.get(
+        `${API_URL}/meetings/past?page=1&page_size=20`
+      );
+
+      console.log("Past meetings:", response.data);
+
+      setMeetings(response.data.items || []);
+
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error("Error fetching past meetings:", err);
+      setError(err);
       setMeetings([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const cancelMeeting = async (meetingId) => {
-    setLoading(true);
-    setError(null);
+  // -----------------------------
+  // CANCEL
+  // -----------------------------
+  const cancelMeeting = async (id) => {
     try {
-      await meetingsApi.cancelMeeting(meetingId);
-      setMeetings(prev => prev.filter(m => m.id !== meetingId));
+      await axios.put(`${API_URL}/meetings/${id}/cancel`);
+
+      // refresh list
+      await fetchUpcoming();
+
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error("Cancel error:", err);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
-  return { meetings, loading, error, fetchUpcoming, fetchPast, cancelMeeting };
+  return {
+    meetings,
+    loading,
+    error,
+    fetchUpcoming,
+    fetchPast,
+    cancelMeeting,
+  };
 };
