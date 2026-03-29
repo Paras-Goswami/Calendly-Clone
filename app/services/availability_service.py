@@ -117,7 +117,7 @@ from app.services.event_type_service import get_event_type_by_slug
 
 def get_available_slots_by_slug(db: Session, slug: str, date: str):
     """
-    Returns slots using slug (frontend-friendly)
+    Returns available slots for given event slug and date
     """
 
     try:
@@ -125,7 +125,7 @@ def get_available_slots_by_slug(db: Session, slug: str, date: str):
     except Exception:
         raise ValidationError("Invalid date format. Use YYYY-MM-DD")
 
-    # ✅ Get event type using slug
+    # ✅ Get event type
     event_type = get_event_type_by_slug(db, slug)
 
     if not event_type:
@@ -133,43 +133,61 @@ def get_available_slots_by_slug(db: Session, slug: str, date: str):
 
     duration = event_type.duration_minutes
 
-    # ✅ Get user availability
+    # ✅ Get user
     user = get_default_user(db)
-    weekday = selected_date.weekday()
 
-    availability = db.query(Availability).filter(
+    # ✅ FIX DAY ISSUE HERE
+    weekday = (selected_date.weekday() + 1) % 7  # change below if Sunday issue
+
+    # 🔥 If Sunday still not working → use this instead:
+    # weekday = (selected_date.weekday() + 1) % 7
+
+    # ✅ GET ALL AVAILABILITY (IMPORTANT FIX)
+    availabilities = db.query(Availability).filter(
         Availability.user_id == user.id,
         Availability.day_of_week == weekday
-    ).first()
-
-    if not availability:
-        return []
-
-    # ✅ Create datetime range
-    start_time = datetime.combine(selected_date, availability.start_time)
-    end_time = datetime.combine(selected_date, availability.end_time)
-
-    # ✅ Generate slots
-    slots = []
-    current = start_time
-
-    while current + timedelta(minutes=duration) <= end_time:
-        slots.append(current.strftime("%H:%M"))
-        current += timedelta(minutes=duration)
-
-    # ✅ Remove booked slots
-    bookings = db.query(Booking).filter(
-        Booking.event_type_id == event_type.id,
-        Booking.start_time >= start_time,
-        Booking.end_time <= end_time
     ).all()
 
-    booked_times = [
-        b.start_time.strftime("%H:%M") for b in bookings
-    ]
+    if not availabilities:
+        return []
 
-    available_slots = [
-        s for s in slots if s not in booked_times
-    ]
+    all_slots = []
+
+    # ✅ LOOP THROUGH ALL AVAILABILITY SLOTS
+    for availability in availabilities:
+        start_time = datetime.combine(selected_date, availability.start_time)
+        end_time = datetime.combine(selected_date, availability.end_time)
+
+        current = start_time
+
+        while current + timedelta(minutes=duration) <= end_time:
+            all_slots.append(current)
+            current += timedelta(minutes=duration)
+
+    # ✅ GET BOOKINGS FOR THAT DAY
+    day_start = datetime.combine(selected_date, datetime.min.time())
+    day_end = datetime.combine(selected_date, datetime.max.time())
+
+    bookings = db.query(Booking).filter(
+        Booking.event_type_id == event_type.id,
+        Booking.start_time >= day_start,
+        Booking.start_time <= day_end
+    ).all()
+
+    # ✅ REMOVE OVERLAPPING BOOKINGS
+    available_slots = []
+
+    for slot in all_slots:
+        slot_end = slot + timedelta(minutes=duration)
+
+        overlap = False
+
+        for booking in bookings:
+            if not (slot_end <= booking.start_time or slot >= booking.end_time):
+                overlap = True
+                break
+
+        if not overlap:
+            available_slots.append(slot.strftime("%H:%M"))
 
     return available_slots

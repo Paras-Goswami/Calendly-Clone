@@ -100,43 +100,51 @@ def get_available_slots(db: Session, date: date, event_type_id: int):
 
 
 # ---------------------------------------------------------------------------
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+
+from app.models.booking import Booking
+from app.services.event_type_service import get_event_type_by_slug
+from app.utils.exceptions import ValidationError
 
 
-def create_booking(db: Session, payload: BookingCreate):
+def create_booking(db: Session, slug: str, payload):
+    # ✅ Get event type using slug
+    event_type = get_event_type_by_slug(db, slug)
 
-    event_type = get_event_type_by_id(db, payload.event_type_id)
+    if not event_type:
+        raise ValidationError("Invalid event type")
 
-    start_time = payload.start_time
-    if start_time.tzinfo is None:
-        start_time = start_time.replace(tzinfo=pytz.utc)
+    # ✅ Convert date + time
+    try:
+        start_datetime = datetime.strptime(
+            f"{payload.date} {payload.start_time}",
+            "%Y-%m-%d %H:%M:%S"
+        )
+    except:
+        raise ValidationError("Invalid date/time format")
 
-    end_time = start_time + timedelta(minutes=event_type.duration_minutes)
+    duration = event_type.duration_minutes
+    end_datetime = start_datetime + timedelta(minutes=duration)
 
-    # 🚀 STEP 2.1: Lock database (prevents race condition)
-    db.execute(text("BEGIN IMMEDIATE"))  # For SQLite
-    # For PostgreSQL: remove this and rely on FOR UPDATE
-
-    # 🚀 STEP 2.2: Lock rows while checking
+    # ✅ Prevent double booking
     existing = db.query(Booking).filter(
         Booking.event_type_id == event_type.id,
-        Booking.start_time < end_time,
-        Booking.end_time > start_time,
-        Booking.status == BookingStatus.CONFIRMED
-    ).with_for_update().first()
+        Booking.start_time < end_datetime,
+        Booking.end_time > start_datetime
+    ).first()
 
-    # 🚀 STEP 2.3: If slot already booked
     if existing:
-        raise SlotUnavailableError("This slot is already booked")
+        raise ValidationError("This slot is already booked")
 
-    # 🚀 STEP 2.4: Create booking
+    # ✅ Create booking
     booking = Booking(
         event_type_id=event_type.id,
         invitee_name=payload.invitee_name,
         invitee_email=payload.invitee_email,
-        start_time=start_time,
-        end_time=end_time,
         notes=payload.notes,
-        status=BookingStatus.CONFIRMED
+        start_time=start_datetime,
+        end_time=end_datetime,
     )
 
     db.add(booking)

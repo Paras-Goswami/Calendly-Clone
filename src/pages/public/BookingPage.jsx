@@ -74,7 +74,7 @@ const BookingPage = () => {
 
       console.log("SLOTS:", response.data);
 
-      setAvailableSlots(response.data || []);
+      setAvailableSlots(response.data);
 
     } catch (err) {
       console.error('❌ Failed to fetch slots', err.response?.data);
