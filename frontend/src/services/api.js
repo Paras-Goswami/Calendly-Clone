@@ -1,48 +1,65 @@
 // src/services/api.js
-import axios from 'axios';
+import axios from "axios";
+
+// Fallback ensures production never breaks if env var is missing
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://calendly-backend-3u1a.onrender.com";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 15000,
 });
 
-// INTERCEPTORS
+// ================= INTERCEPTORS =================
+
 apiClient.interceptors.request.use(
-  (config) => config,
+  (config) => {
+    console.log("🚀 API REQUEST:", config.method?.toUpperCase(), config.url);
+    return config;
+  },
   (error) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("❌ API ERROR:", error.response?.data || error.message);
+    console.error(
+      "❌ API ERROR:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
     return Promise.reject(error);
   }
 );
+
 // ================= MEETINGS =================
+
 export const meetingsApi = {
   getUpcoming: () =>
-    apiClient.get('/meetings/upcoming/'),
+    apiClient.get("/meetings/upcoming/"),
 
   getPast: () =>
-    apiClient.get('/meetings/past/'),
+    apiClient.get("/meetings/past/"),
 
   cancelMeeting: (meetingId) =>
     apiClient.post(`/meetings/${meetingId}/cancel/`),
 };
-// ================= EVENT TYPES =================
-export const eventTypesApi = {
-  getAll: () => apiClient.get('/event-types/'),
 
-  // ✅ CORRECT
+// ================= EVENT TYPES =================
+
+export const eventTypesApi = {
+  getAll: () =>
+    apiClient.get("/event-types/"),
+
   getBySlug: (slug) =>
     apiClient.get(`/event-types/slug/${slug}`),
 
   create: (data) =>
-    apiClient.post('/event-types/', data),
+    apiClient.post("/event-types/", data),
 
   update: (id, data) =>
     apiClient.patch(`/event-types/${id}/`, data),
@@ -52,14 +69,14 @@ export const eventTypesApi = {
 };
 
 // ================= AVAILABILITY =================
+
 export const availabilityApi = {
   getRules: () =>
-    apiClient.get('/availability/'),
+    apiClient.get("/availability/"),
 
   updateRules: (data) =>
-    apiClient.put('/availability/bulk/', data),
+    apiClient.put("/availability/bulk/", data),
 
-  // ✅ IMPORTANT FIX: use SLUG (not ID)
   getAvailableSlots: (slug, date) =>
     apiClient.get(`/availability/slots/${slug}`, {
       params: { date },
@@ -67,6 +84,7 @@ export const availabilityApi = {
 };
 
 // ================= BOOKINGS =================
+
 export const bookingApi = {
   createBooking: (slug, data) =>
     apiClient.post(`/booking/${slug}/`, data),
