@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import engine, SessionLocal, Base
 from app.db.seed import seed_default_user
-from app.models import * # registers all models
+from app.models import *  # registers all models
 
 # Routers
 from app.routers.event_types_router import router as event_types_router
@@ -56,22 +56,16 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# CORS Configuration (FIXED COMMAS AND PORTS)
+# CORS Configuration (UPDATED FOR PRODUCTION)
 # ---------------------------------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://127.0.0.1:5173",
-        "http://localhost:5174", 
-        "http://127.0.0.1:5174",
-        "http://0.0.0.0:5174"
-    ],
+    allow_origins=["*"],  # IMPORTANT: allows Vercel frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # ---------------------------------------------------------------------------
 # Exception Handler
@@ -85,16 +79,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         content={"detail": "An unexpected error occurred."},
     )
 
-
 # ---------------------------------------------------------------------------
-# Routers (FIXED PREFIX TO MATCH REACT FRONTEND)
+# Routers
 # ---------------------------------------------------------------------------
 
 app.include_router(event_types_router)
 app.include_router(availability_router)
 app.include_router(booking_router)
 app.include_router(meetings_router)
-
 
 # ---------------------------------------------------------------------------
 # Health
@@ -103,7 +95,6 @@ app.include_router(meetings_router)
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok", "service": "schedulr-api"}
-
 
 @app.get("/", include_in_schema=False)
 def root():
